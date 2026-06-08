@@ -1,11 +1,12 @@
-# ⚠️ 只把 gitops/ 纳入版本控制;其余一律排除(含敏感/大文件)
+# Only the gitops/ directory is version-controlled; everything else is excluded
+# (including secrets and large binaries).
 
-# 凭证 / 密钥(绝不上传)
+# Credentials / secrets (never commit)
 kubeconfig
 pull-secret*
 **/pull-secret*
 
-# CRC / 工具二进制(大文件)
+# CRC / tooling binaries (large)
 crc
 oc
 vfkit
@@ -13,13 +14,13 @@ crc-admin-helper-darwin
 *.pkg
 crc-pkg-extracted/
 
-# 个人资料(面试故事等,不公开)
+# Personal material (interview notes, etc.)
 docs/
 
-# sandbox 时期的原版(含演示用明文密码,先只留本地)
+# Sandbox-era originals (contain demo plaintext passwords; keep local only)
 helm/
 manifests/
 
-# 杂项
+# Misc
 .DS_Store
 oc-client.tar.gz
