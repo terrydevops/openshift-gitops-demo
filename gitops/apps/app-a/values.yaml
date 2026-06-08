@@ -1,0 +1,40 @@
+# ════════════════════════════════════════════════════════════
+# Application values — environment-agnostic defaults.
+# Override per environment with values-<env>.yaml.
+# ════════════════════════════════════════════════════════════
+
+app:
+  name: webapp
+  port: 8080
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+  route:
+    enabled: true
+    tlsTermination: edge
+    insecurePolicy: Redirect
+
+# S2I build: true for a self-contained demo; for strict GitOps set false and deploy a
+# CI-produced image (build belongs to CI, not to the deploy chart).
+build:
+  enabled: true
+  gitUri: https://github.com/sclorg/nodejs-ex
+  builderImage: nodejs:22-ubi9        # builder ImageStream in the openshift namespace
+# Used when build.enabled=false: a pre-built image produced by CI
+image:
+  repository: ""                       # e.g. image-registry.openshift-image-registry.svc:5000/app-a/webapp
+  tag: latest
+
+# ── Database: CloudNativePG Cluster CR (consumes the operator the platform installed) ──
+db:
+  name: app-db                         # CNPG generates Secret <name>-app and Service <name>-rw
+  instances: 1                         # 1 for CRC; 3 in production (automatic primary/replica + failover)
+  database: fruitsdb
+  owner: appuser
+  storage:
+    size: 1Gi
+    storageClass: ""                   # empty = cluster default StorageClass (portable across envs)
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }

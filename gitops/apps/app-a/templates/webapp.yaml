@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}
+  labels:
+    app: {{ .Values.app.name }}
+    app.openshift.io/runtime: nodejs
+    {{- include "app-a.labels" . | nindent 4 }}
+  {{- if .Values.build.enabled }}
+  annotations:
+    image.openshift.io/triggers: |
+      [{"from":{"kind":"ImageStreamTag","name":"{{ .Values.app.name }}:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"{{ .Values.app.name }}\")].image"}]
+  {{- end }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+        {{- include "app-a.labels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Values.app.name }}
+        image: {{ include "app-a.webappImage" . }}
+        envFrom:
+        - configMapRef: { name: app-config }
+        env:
+        # Connection details come from the CNPG-generated Secret <db.name>-app
+        # and the primary service <db.name>-rw.
+        - name: POSTGRESQL_SERVICE_HOST
+          value: {{ .Values.db.name }}-rw
+        - name: POSTGRESQL_USER
+          valueFrom: { secretKeyRef: { name: {{ .Values.db.name }}-app, key: username } }
+        - name: POSTGRESQL_PASSWORD
+          valueFrom: { secretKeyRef: { name: {{ .Values.db.name }}-app, key: password } }
+        - name: POSTGRESQL_DATABASE
+          valueFrom: { secretKeyRef: { name: {{ .Values.db.name }}-app, key: dbname } }
+        ports:
+        - containerPort: {{ .Values.app.port }}
+        readinessProbe:
+          httpGet: { path: /, port: {{ .Values.app.port }} }
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet: { path: /, port: {{ .Values.app.port }} }
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources: {{- toYaml .Values.app.resources | nindent 10 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.app.name }}
+  labels: {{- include "app-a.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ .Values.app.name }}
+  ports:
+  - name: http
+    port: {{ .Values.app.port }}
+    targetPort: {{ .Values.app.port }}
+{{- if .Values.app.route.enabled }}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.app.name }}
+  labels: {{- include "app-a.labels" . | nindent 4 }}
+spec:
+  to: { kind: Service, name: {{ .Values.app.name }} }
+  port: { targetPort: http }
+  tls:
+    termination: {{ .Values.app.route.tlsTermination }}
+    insecureEdgeTerminationPolicy: {{ .Values.app.route.insecurePolicy }}
+{{- end }}

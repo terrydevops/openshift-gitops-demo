@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────────────────────
+# Platform layer: provision a "guard-railed" namespace for the app-a team.
+# Owned by the platform team (cluster-admin). The app team only operates inside this ns.
+# ─────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-a
+  labels:
+    team: app-a
+    app.kubernetes.io/managed-by: platform
+---
+# Quota: cap total usage of this namespace (set by platform, immutable to the app team)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: app-a-quota
+  namespace: app-a
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    persistentvolumeclaims: "10"
+    requests.storage: 20Gi
+---
+# Default requests/limits so workloads that omit them still get sane values
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: app-a-limits
+  namespace: app-a
+spec:
+  limits:
+  - type: Container
+    default:        { cpu: 500m, memory: 512Mi }
+    defaultRequest: { cpu: 100m, memory: 128Mi }
+---
+# RBAC: grant namespace-scoped admin to the app team (group), limited to app-a.
+# They get full control inside app-a, but nothing cluster-scoped or in other namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-a-admins
+  namespace: app-a
+subjects:
+- kind: Group
+  name: app-a-admins          # add the app-team users to this group
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: admin                 # built-in OpenShift namespace-scoped admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Layer 3 (least privilege): the ServiceAccount Argo CD impersonates when deploying app-a.
+# Referenced by AppProject.destinationServiceAccounts so Argo applies with THIS SA's
+# permissions instead of the default cluster-admin. It only has admin within app-a.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-a-deployer
+  namespace: app-a
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-a-deployer-admin
+  namespace: app-a
+subjects:
+- kind: ServiceAccount
+  name: app-a-deployer
+  namespace: app-a
+roleRef:
+  kind: ClusterRole
+  name: admin                 # admin scoped to app-a only (RoleBinding is namespaced)
+  apiGroup: rbac.authorization.k8s.io

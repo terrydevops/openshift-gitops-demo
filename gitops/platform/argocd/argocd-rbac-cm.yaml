@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────────
+# Layer 2: Argo CD RBAC — who (users/groups) may operate which Applications.
+# On OpenShift GitOps you typically set this via the ArgoCD CR's .spec.rbac.policy,
+# or by patching this ConfigMap. Shown here as the policy content.
+# ─────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: openshift-gitops
+data:
+  policy.default: role:readonly        # default to read-only (least privilege)
+  policy.csv: |
+    # Platform team: global admin
+    g, platform-admins, role:admin
+
+    # App-A team: may only manage Applications under their own project
+    p, role:app-a, applications, get,      app-a/*, allow
+    p, role:app-a, applications, sync,     app-a/*, allow
+    p, role:app-a, applications, action/*, app-a/*, allow
+    p, role:app-a, logs, get, app-a/*, allow
+    # (no project create/delete, no cluster access, no access to other projects)
+    g, app-a-admins, role:app-a
+  scopes: "[groups]"

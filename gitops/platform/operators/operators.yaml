@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────
+# Platform layer: install Operators (cluster-scoped, owned by the platform team).
+# Application teams have no access here — this is where "the platform provides capabilities".
+# Operators are managed by OLM, so upgrades are declarative (channel-based), not manual.
+# ─────────────────────────────────────────────────────────────
+# 1) OpenShift GitOps (= Argo CD, packaged by Red Hat)
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-gitops-operator
+  namespace: openshift-operators
+spec:
+  channel: latest
+  name: openshift-gitops-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+---
+# 2) CloudNativePG (PostgreSQL Operator, provides the Cluster CRD)
+# NOTE: community operator channel/package names vary by catalog version — verify first:
+#   oc get packagemanifest -n openshift-marketplace | grep -i cloudnative
+#   oc get packagemanifest cloudnative-pg -o jsonpath='{.status.defaultChannel}'
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: cloudnative-pg
+  namespace: openshift-operators
+spec:
+  channel: stable-v1          # <- replace with the actual channel from the command above
+  name: cloudnative-pg
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

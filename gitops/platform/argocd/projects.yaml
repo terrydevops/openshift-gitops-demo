@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────────────
+# Argo CD AppProjects — Layer 1 guardrail: what each Application may deploy.
+# sync-wave -1 ensures Projects are created before the Applications that reference them.
+# ─────────────────────────────────────────────────────────────
+# Platform project: privileged (cluster-scoped resources, any namespace)
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: "Platform team — full cluster scope"
+  sourceRepos:
+  - https://github.com/terrydevops/openshift-gitops-demo.git
+  destinations:
+  - namespace: "*"
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:           # allow all cluster-scoped resources (Operators, SCCs, ...)
+  - group: "*"
+    kind: "*"
+  namespaceResourceWhitelist:
+  - group: "*"
+    kind: "*"
+---
+# Application project (app-a): restricted — app-a namespace only, no cluster-scoped resources
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: app-a
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: "App-A team — namespaced resources, app-a namespace only"
+  sourceRepos:
+  - https://github.com/terrydevops/openshift-gitops-demo.git
+  destinations:
+  - namespace: app-a
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []        # Layer 1: deny all cluster-scoped resources
+  namespaceResourceWhitelist:
+  - group: "*"
+    kind: "*"                         # includes the CNPG Cluster CR (namespaced)
+  # Layer 3 (least privilege): Argo applies app-a using a namespace-scoped SA, not cluster-admin.
+  # Requires Argo CD >= 2.13 with application.sync.impersonation.enabled: "true" in argocd-cm.
+  destinationServiceAccounts:
+  - server: https://kubernetes.default.svc
+    namespace: app-a
+    defaultServiceAccount: app-a-deployer

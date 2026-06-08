@@ -1,0 +1,57 @@
+# ─────────────────────────────────────────────────────────────
+# Child Applications (created by the root App-of-Apps).
+# sync-wave 0 runs after the Projects (-1). Platform Apps use project=platform
+# (privileged); the application uses project=app-a (restricted).
+# ─────────────────────────────────────────────────────────────
+# Platform: install Operators
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: operators
+  namespace: openshift-gitops
+  annotations: { argocd.argoproj.io/sync-wave: "0" }
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/terrydevops/openshift-gitops-demo.git
+    path: gitops/platform/operators
+    targetRevision: main
+  destination: { server: https://kubernetes.default.svc, namespace: openshift-operators }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+---
+# Platform: provision the tenant (namespace/quota/rolebinding/deployer SA)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tenants
+  namespace: openshift-gitops
+  annotations: { argocd.argoproj.io/sync-wave: "0" }
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/terrydevops/openshift-gitops-demo.git
+    path: gitops/platform/tenants/app-a
+    targetRevision: main
+  destination: { server: https://kubernetes.default.svc, namespace: app-a }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+---
+# Application: deploy app-a (restricted project, Helm chart)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-a
+  namespace: openshift-gitops
+  annotations: { argocd.argoproj.io/sync-wave: "1" }   # after operators/tenants are ready
+spec:
+  project: app-a
+  source:
+    repoURL: https://github.com/terrydevops/openshift-gitops-demo.git
+    path: gitops/apps/app-a
+    targetRevision: main
+    helm: { valueFiles: [values.yaml] }
+  destination: { server: https://kubernetes.default.svc, namespace: app-a }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=false]

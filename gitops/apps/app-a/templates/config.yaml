@@ -1,0 +1,9 @@
+# Non-sensitive configuration (credentials come from the CNPG-generated Secret, not here)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  labels: {{- include "app-a.labels" . | nindent 4 }}
+data:
+  NODE_ENV: "production"
+  PORT: {{ .Values.app.port | quote }}

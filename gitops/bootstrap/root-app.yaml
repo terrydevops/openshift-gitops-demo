@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+# Root App-of-Apps — the single entry point for the whole GitOps tree.
+# After Argo CD is installed, the platform team applies ONLY this; everything else
+# is reconciled automatically. It syncs gitops/platform/argocd/, which creates:
+#   - AppProjects (platform / app-a)
+#   - child Applications (operators / tenants / app-a)
+#   - Argo CD RBAC
+# Each child Application then reconciles its own content ("GitOps all the way down").
+# Uses the built-in default project because the platform project does not exist yet
+# at bootstrap time.
+# ─────────────────────────────────────────────────────────────
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/terrydevops/openshift-gitops-demo.git
+    path: gitops/platform/argocd
+    targetRevision: main
+    directory:
+      recurse: true                    # apply every Argo manifest under this directory
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

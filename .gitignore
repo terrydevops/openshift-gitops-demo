@@ -1,0 +1,25 @@
+# ⚠️ 只把 gitops/ 纳入版本控制;其余一律排除(含敏感/大文件)
+
+# 凭证 / 密钥(绝不上传)
+kubeconfig
+pull-secret*
+**/pull-secret*
+
+# CRC / 工具二进制(大文件)
+crc
+oc
+vfkit
+crc-admin-helper-darwin
+*.pkg
+crc-pkg-extracted/
+
+# 个人资料(面试故事等,不公开)
+docs/
+
+# sandbox 时期的原版(含演示用明文密码,先只留本地)
+helm/
+manifests/
+
+# 杂项
+.DS_Store
+oc-client.tar.gz
