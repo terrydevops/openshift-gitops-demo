@@ -26,8 +26,8 @@ metadata:
   name: cloudnative-pg
   namespace: openshift-operators
 spec:
-  channel: stable-v1          # <- replace with the actual channel from the command above
+  channel: stable-v1          # verified via: oc get packagemanifest cloudnative-pg
   name: cloudnative-pg
-  source: community-operators
+  source: certified-operators
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
